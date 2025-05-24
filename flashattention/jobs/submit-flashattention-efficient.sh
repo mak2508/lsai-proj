@@ -2,7 +2,7 @@
 
 #SBATCH --account=a-large-sc
 #SBATCH --time=00:14:59
-#SBATCH --job-name=fa-tridao
+#SBATCH --job-name=flashattention-efficient
 #SBATCH --output=/iopsstor/scratch/cscs/%u/project/logs/%x-%j.out
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -30,6 +30,7 @@ TRAINING_CMD="python3 $PROJECT_DIR/train.py \
     --lr-warmup-steps 100 \
     --training-steps 1000 \
     --fused-optimizer \
+    --attention-backend efficient \
     "
 
 srun --cpus-per-task $SLURM_CPUS_PER_TASK bash -c "$CMD_PREFIX $TRAINING_CMD"
