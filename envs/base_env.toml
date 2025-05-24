@@ -1,0 +1,12 @@
+image = "/iopsstor/scratch/cscs/ahkhan/project/envs/base_img.sqsh"
+mounts = [
+  "/capstor",
+  "/iopsstor",
+  "/users",
+]
+workdir = "/workspace"
+writable = true
+
+[annotations]
+com.hooks.aws_ofi_nccl.enabled = "true"
+com.hooks.aws_ofi_nccl.variant = "cuda12"
