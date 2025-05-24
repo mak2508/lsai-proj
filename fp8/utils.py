@@ -173,6 +173,12 @@ def get_args():
         default=1,
     )
     parser.add_argument(
+        "--fp8-train",
+        type=str,
+        default="None",
+        help="Set to train the model with fp8. Options: TE, AO, None"
+    )
+    parser.add_argument(
         "--model-dtype",
         type=str,
         default="bf16",
