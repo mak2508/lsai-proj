@@ -5,6 +5,8 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
+from flash_attn import flash_attn_func
+
 @dataclass
 class TransformerModelArgs:
     dim: int = 4096
@@ -18,6 +20,7 @@ class TransformerModelArgs:
     norm_type: str = "rmsnorm"
     seq_len: int = 2048 # defined later by config
     vocab_size: int = -1  # defined later by tokenizer
+    flash_attn3: bool = False
     
 class RMSNorm(nn.Module):
     """
@@ -134,9 +137,9 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
     )
 
 
-class Attention(nn.Module):
+class BaseAttention(nn.Module):
     """
-    Multi-head attention module.
+    Base class for attention mechanisms.
 
     Args:
         model_args (TransformerModelArgs): Model configuration arguments.
@@ -172,6 +175,38 @@ class Attention(nn.Module):
             model_args.n_heads * self.head_dim, model_args.dim, bias=False
         )
 
+    def _prepare_attention_inputs(self, x: torch.Tensor, freqs_cis: torch.Tensor):
+        """Common preprocessing for attention inputs."""
+        bs, seqlen, _ = x.shape
+        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+
+        xq = xq.view(bs, seqlen, -1, self.head_dim)
+        xk = xk.view(bs, seqlen, -1, self.head_dim)
+        xv = xv.view(bs, seqlen, -1, self.head_dim)
+
+        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+
+        # repeat k/v heads if n_kv_heads < n_heads
+        keys = repeat_kv(xk, self.n_rep)
+        values = repeat_kv(xv, self.n_rep)
+
+        # Reshape for attention
+        xq = xq.transpose(1, 2)  # (bs, n_heads, seqlen, head_dim)
+        keys = keys.transpose(1, 2)  # (bs, n_heads, seqlen, head_dim)
+        values = values.transpose(1, 2)  # (bs, n_heads, seqlen, head_dim)
+
+        return xq, keys, values, bs, seqlen
+
+    def _reshape_output(self, output: torch.Tensor, bs: int, seqlen: int):
+        """Common postprocessing for attention outputs."""
+        output = output.transpose(1, 2).contiguous()  # (bs, seqlen, n_heads, head_dim)
+        output = output.view(bs, seqlen, -1)
+        return self.wo(output)
+
+    def compute_attention(self, xq: torch.Tensor, keys: torch.Tensor, values: torch.Tensor):
+        """Abstract method to be implemented by subclasses."""
+        raise NotImplementedError
+
     def forward(
         self,
         x: torch.Tensor,
@@ -187,30 +222,28 @@ class Attention(nn.Module):
         Returns:
             torch.Tensor: Output tensor after attention.
         """
-        bs, seqlen, _ = x.shape
-        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+        xq, keys, values, bs, seqlen = self._prepare_attention_inputs(x, freqs_cis)
+        output = self.compute_attention(xq, keys, values)
+        return self._reshape_output(output, bs, seqlen)
 
-        xq = xq.view(bs, seqlen, -1, self.head_dim)
-        xk = xk.view(bs, seqlen, -1, self.head_dim)
-        xv = xv.view(bs, seqlen, -1, self.head_dim)
 
-        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+class PyTorchAttention(BaseAttention):
+    """Attention implementation using PyTorch's scaled_dot_product_attention."""
 
-        # repeat k/v heads if n_kv_heads < n_heads
-        keys = repeat_kv(xk, self.n_rep)
-        values = repeat_kv(xv, self.n_rep)
+    def compute_attention(self, xq: torch.Tensor, keys: torch.Tensor, values: torch.Tensor):
+        return F.scaled_dot_product_attention(xq, keys, values, is_causal=True)
 
-        xq = xq.transpose(1, 2)
-        xk = keys.transpose(1, 2)
-        xv = values.transpose(1, 2)
 
-        # we use casual mask for training
-        output = F.scaled_dot_product_attention(xq, xk, xv, is_causal=True)
-        output = output.transpose(
-            1, 2
-        ).contiguous()
-        output = output.view(bs, seqlen, -1)
-        return self.wo(output)
+class FlashAttention(BaseAttention):
+    """Attention implementation using flash-attn library."""
+
+    def compute_attention(self, xq: torch.Tensor, keys: torch.Tensor, values: torch.Tensor):
+        return flash_attn_func(
+            xq, keys, values,
+            causal=True,  # Enable causal masking
+            dropout_p=0.0,  # No dropout during inference
+            softmax_scale=None,  # Will use default scaling of 1/sqrt(head_dim)
+        )
 
 
 class FeedForward(nn.Module):
@@ -275,7 +308,7 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.n_heads = model_args.n_heads
         self.dim = model_args.dim
-        self.attention = Attention(model_args)
+        self.attention = PyTorchAttention(model_args) if not model_args.flash_attn3 else FlashAttention(model_args)
         self.feed_forward = FeedForward(
             dim=model_args.dim,
             hidden_dim=4 * model_args.dim,

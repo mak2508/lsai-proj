@@ -183,5 +183,11 @@ def get_args():
         action='store_true',
         help="Set to compile the model with `torch.compile`"
     )
+    parser.add_argument(
+        "--attention-backend",
+        type=str,
+        default="none",
+        help="Attention backend to use. Options: flash-attn, flash-attn3, cudnn, efficient, none.",
+    )
     args = parser.parse_args()
     return args
