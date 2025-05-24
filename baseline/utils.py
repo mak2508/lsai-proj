@@ -183,5 +183,11 @@ def get_args():
         action='store_true',
         help="Set to compile the model with `torch.compile`"
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="./outputs/",
+        help="Output directory to save the model and metrics"
+    )
     args = parser.parse_args()
     return args

@@ -1,7 +1,10 @@
 import os
 import time
+import json
+from datetime import datetime
 
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
@@ -15,6 +18,12 @@ def train(args):
   device = torch.device(f"cuda:{int(os.getenv('LOCAL_RANK', 0))}")
   model_dtype = PRECISION_STR_TO_DTYPE[args.model_dtype]
 
+  # Set up metrics logging
+  timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+  os.makedirs(args.output_dir, exist_ok=True)
+  metrics_file = os.path.join(args.output_dir, f"training_metrics_{timestamp}.jsonl")
+  metrics_data = []
+  
   # Set up DataLoader
   logger.info("Setting up DataLoaders...")
   tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path)
@@ -100,8 +109,23 @@ def train(args):
       mfu = 100 * num_flop_per_token * tps / 989e12
       tflops = num_flop_per_token * tps / 1e12
       training_tps = ntraining_tokens_since_last_log / time_delta
+      current_lr = lr_scheduler.get_last_lr()[0]
 
+      # Log to console
       logger.info(f"Step: {train_step} | Loss: {loss.item():.2f} | Tokens per second: {tps:.2f} | Training tokens per second (%): {100*training_tps/tps:.2f} | MFU (%): {mfu:.2f} | TFLOPs: {tflops:.2f}")
+      
+      # Collect metrics in memory
+      metrics_data.append({
+        'step': train_step,
+        'loss': loss.item(),
+        'tokens_per_second': tps,
+        'training_tokens_per_second': training_tps,
+        'training_tokens_percentage': 100 * training_tps / tps,
+        'mfu': mfu,
+        'tflops': tflops,
+        'learning_rate': current_lr
+      })
+
       ntokens_since_last_log = 0
       ntraining_tokens_since_last_log = 0
       time_last_log = time.perf_counter()
@@ -110,8 +134,12 @@ def train(args):
     if args.profile and args.profile_step_end == train_step:
       torch.cuda.cudart().cudaProfilerStop()
 
+  # Write all metrics to file at the end of training
+  with open(metrics_file, 'w') as f:
+    for metrics in metrics_data:
+      f.write(json.dumps(metrics) + '\n')
 
-  logger.info("Training completed")
+  logger.info(f"Training completed. Metrics saved to {metrics_file}")
 
 if __name__ == "__main__":
   init_logger()
