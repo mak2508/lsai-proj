@@ -1,8 +1,8 @@
-FROM	nvcr.io/nvidia/pytorch:25.01-py3	
+FROM	nvcr.io/nvidia/pytorch:25.04-py3	
 	
 # setup	
 RUN apt-get update && apt-get install python3-pip python3-venv -y 
-RUN pip install --upgrade pip setuptools==69.5.1 
+RUN pip install --upgrade pip setuptools
 
 # Install the rest of dependencies. 
 RUN pip install \
@@ -22,7 +22,8 @@ RUN pip install \
         jupyter \
         deepspeed \
         seaborn	\
-        torchao
+        torchao \
+        flash-attn
 	        
 # Create a work directory 
 RUN mkdir -p /workspace
