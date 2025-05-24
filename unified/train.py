@@ -4,13 +4,26 @@ import json
 from datetime import datetime
 
 import torch
-import pandas as pd
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
+from torchao.float8 import convert_to_float8_training, Float8LinearConfig
 
 from dataset import CollatorForCLM, ParquetDataset
 from model import Transformer, TransformerModelArgs
 from utils import build_lr_scheduler, clip_grad_norm_, get_args, get_num_params, get_num_flop_per_token, init_logger, logger, PRECISION_STR_TO_DTYPE, set_default_dtype
+
+
+# optional: filter modules from being eligible for float8 conversion
+def module_filter_fn(mod: torch.nn.Module, fqn: str):
+    # don't convert the last module
+    if fqn == "1":
+        return False
+    # don't convert linear modules with weight dimensions not divisible by 16
+    if isinstance(mod, torch.nn.Linear):
+        if mod.in_features % 16 != 0 or mod.out_features % 16 != 0:
+            return False
+    return True
+
 
 def train(args):
   logger.info(f"Experiment args: {args}")
@@ -49,6 +62,11 @@ def train(args):
     )
   with set_default_dtype(model_dtype):
     model = Transformer(model_config).to(device)
+  
+  if args.fp8_train:
+    logger.info(f"Converting model to float8, using recipe: {args.fp8_recipe}")
+    config = Float8LinearConfig.from_recipe_name(args.fp8_recipe)
+    convert_to_float8_training(model, module_filter_fn=module_filter_fn, config=config)
   
   if args.compile:
     logger.info("Using `torch.compile`")

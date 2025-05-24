@@ -189,5 +189,16 @@ def get_args():
         default="./outputs/",
         help="Output directory to save the model and metrics"
     )
+    parser.add_argument(
+        "--fp8-train",
+        action='store_true',
+        help="Set to train the model with fp8"
+    )
+    parser.add_argument(
+        "--fp8-recipe",
+        type=str,
+        default="tensorwise",
+        help="Set the fp8 recipe to use for training. Options: rowwise, tensorwise"
+    )
     args = parser.parse_args()
     return args
