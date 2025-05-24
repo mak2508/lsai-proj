@@ -105,25 +105,25 @@ def train(args):
     if (train_step == 1 or train_step % args.logging_frequency == 0):
       time_delta = time.perf_counter() - time_last_log
       # tokens per second per device, abbreviated as tps
-      tps = ntokens_since_last_log / time_delta 
-      mfu = 100 * num_flop_per_token * tps / 989e12
-      tflops = num_flop_per_token * tps / 1e12
-      training_tps = ntraining_tokens_since_last_log / time_delta
-      current_lr = lr_scheduler.get_last_lr()[0]
+      tps = float(ntokens_since_last_log / time_delta)
+      mfu = float(100 * num_flop_per_token * tps / 989e12)
+      tflops = float(num_flop_per_token * tps / 1e12)
+      training_tps = float(ntraining_tokens_since_last_log / time_delta)
+      current_lr = float(lr_scheduler.get_last_lr()[0])
 
       # Log to console
       logger.info(f"Step: {train_step} | Loss: {loss.item():.2f} | Tokens per second: {tps:.2f} | Training tokens per second (%): {100*training_tps/tps:.2f} | MFU (%): {mfu:.2f} | TFLOPs: {tflops:.2f}")
       
-      # Collect metrics in memory
+      # Collect metrics in memory - ensure all values are native Python types
       metrics_data.append({
-        'step': train_step,
-        'loss': loss.item(),
-        'tokens_per_second': tps,
-        'training_tokens_per_second': training_tps,
-        'training_tokens_percentage': 100 * training_tps / tps,
-        'mfu': mfu,
-        'tflops': tflops,
-        'learning_rate': current_lr
+        'step': int(train_step),
+        'loss': float(loss.item()),
+        'tokens_per_second': float(tps),
+        'training_tokens_per_second': float(training_tps),
+        'training_tokens_percentage': float(100 * training_tps / tps),
+        'mfu': float(mfu),
+        'tflops': float(tflops),
+        'learning_rate': float(current_lr)
       })
 
       ntokens_since_last_log = 0
