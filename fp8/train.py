@@ -4,33 +4,29 @@ import time
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
-# from torchao import convert_model_to_float8_training
-
-from accelerate import Accelerator
-from accelerate.utils import AORecipeKwargs, TERecipeKwargs
+from torchao.float8 import convert_to_float8_training, Float8LinearConfig
 
 from dataset import CollatorForCLM, ParquetDataset
 from model import Transformer, TransformerModelArgs
 from utils import build_lr_scheduler, clip_grad_norm_, get_args, get_num_params, get_num_flop_per_token, init_logger, logger, PRECISION_STR_TO_DTYPE, set_default_dtype
 
+
+# optional: filter modules from being eligible for float8 conversion
+def module_filter_fn(mod: torch.nn.Module, fqn: str):
+    # don't convert the last module
+    if fqn == "1":
+        return False
+    # don't convert linear modules with weight dimensions not divisible by 16
+    if isinstance(mod, torch.nn.Linear):
+        if mod.in_features % 16 != 0 or mod.out_features % 16 != 0:
+            return False
+    return True
+
+
 def train(args):
   logger.info(f"Experiment args: {args}")
-
-  if args.fp8_train == "TE":
-    kwargs = [TERecipeKwargs()]
-    logger.info("Running training with TE fp8 recipe")
-    accelerator = Accelerator(mixed_precision="fp8", kwargs_handlers=kwargs)
-  elif args.fp8_train == "AO":
-    logger.info("Running training with AO fp8 recipe")
-    kwargs = [AORecipeKwargs()]
-    accelerator = Accelerator(mixed_precision="fp8", kwargs_handlers=kwargs)
-  else:
-    assert args.fp8_train == "None"
-    logger.info("Running training in full precision")
-    accelerator = Accelerator()
-
   # Init
-  device = accelerator.device # torch.device(f"cuda:{int(os.getenv('LOCAL_RANK', 0))}")
+  device = torch.device(f"cuda:{int(os.getenv('LOCAL_RANK', 0))}")
   model_dtype = PRECISION_STR_TO_DTYPE[args.model_dtype]
 
   # Set up DataLoader
@@ -41,6 +37,7 @@ def train(args):
   train_dl = DataLoader(train_ds,
                         batch_size=args.batch_size,
                         collate_fn=train_collator)
+  train_dl_iterator = iter(train_dl)
 
   # Set up Model
   logger.info("Setting up Model...")
@@ -55,29 +52,23 @@ def train(args):
         vocab_size=tokenizer.vocab_size,
         seq_len=args.sequence_length,
     )
+  with set_default_dtype(model_dtype):
+    model = Transformer(model_config).to(device)
   
-  # when doing fp8 training, it is better to stick to float32 for everything else
-  if args.fp8_train != "None":
-    with set_default_dtype(torch.float32):
-      model = Transformer(model_config).to(device)
-    # model = convert_model_to_float8_training(model)
-  else:
-    with set_default_dtype(model_dtype):
-      model = Transformer(model_config).to(device)
+  if args.fp8_train:
+    logger.info(f"Converting model to float8, using recipe: {args.fp8_recipe}")
+    config = Float8LinearConfig.from_recipe_name(args.fp8_recipe)
+    convert_to_float8_training(model, module_filter_fn=module_filter_fn, config=config)
   
   if args.compile:
     logger.info("Using `torch.compile`")
     model = torch.compile(model, fullgraph=True)
   
+  model.train()
+
   # Build Optimizers & LR Scheduler
   optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, fused=args.fused_optimizer)
   lr_scheduler = build_lr_scheduler(optimizer, args.lr_warmup_steps)
-
-  # prepare training objects
-  model, optimizer, train_dl, lr_scheduler = accelerator.prepare(model, optimizer, train_dl, lr_scheduler)
-  train_dl_iterator = iter(train_dl)
-  
-  model.train()
 
   # Utils
   num_flop_per_token = get_num_flop_per_token(
@@ -112,7 +103,7 @@ def train(args):
     loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1).float(), labels.flatten(0, 1), reduction="sum")
     loss = loss / num_items_in_batch
     del logits
-    accelerator.backward(loss)
+    loss.backward()
 
     # Clip gradients
     clip_grad_norm_(model.parameters(), args.grad_max_norm)

@@ -17,13 +17,25 @@ PRECISION_STR_TO_DTYPE = {
 }
 
 def init_logger():
+    # Get the root logger
+    logger = logging.getLogger()
+    
+    # Remove any existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Set the log level
     logger.setLevel(logging.INFO)
+    
+    # Create and configure the handler
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     ch.setFormatter(formatter)
+    
+    # Add the handler
     logger.addHandler(ch)
 
 def get_num_params(model: torch.nn.Module, exclude_embedding: bool = False) -> int:
@@ -174,9 +186,14 @@ def get_args():
     )
     parser.add_argument(
         "--fp8-train",
+        action='store_true',
+        help="Set to train the model with fp8"
+    )
+    parser.add_argument(
+        "--fp8-recipe",
         type=str,
-        default="None",
-        help="Set to train the model with fp8. Options: TE, AO, None"
+        default="tensorwise",
+        help="Set the fp8 recipe to use for training. Options: rowwise, tensorwise"
     )
     parser.add_argument(
         "--model-dtype",
