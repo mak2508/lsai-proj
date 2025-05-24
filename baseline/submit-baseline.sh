@@ -9,8 +9,9 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --cpus-per-task=72
 #SBATCH --mem=460000
-#SBATCH --environment=/iopsstor/scratch/cscs/%u/project/envs/base_env.toml
+#SBATCH --environment=/iopsstor/scratch/cscs/ahkhan/project/envs/base_env.toml
 #SBATCH --no-requeue	# Prevent Slurm to requeue the job if the execution crashes (e.g. node failure) so we don't loose the logs
+#SBATCH --partition debug
 
 echo "START TIME: $(date) --sl 4096"
 
