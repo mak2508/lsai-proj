@@ -200,5 +200,11 @@ def get_args():
         default="tensorwise",
         help="Set the fp8 recipe to use for training. Options: rowwise, tensorwise"
     )
+    parser.add_argument(
+        "--attention-backend",
+        type=str,
+        default="none",
+        help="Attention backend to use. Options: flash-attn, flash-attn3, cudnn, efficient, none.",
+    )
     args = parser.parse_args()
     return args

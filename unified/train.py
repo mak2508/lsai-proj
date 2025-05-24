@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from torchao.float8 import convert_to_float8_training, Float8LinearConfig
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from dataset import CollatorForCLM, ParquetDataset
 from model import Transformer, TransformerModelArgs
@@ -59,6 +60,7 @@ def train(args):
         rope_theta=500000,
         vocab_size=tokenizer.vocab_size,
         seq_len=args.sequence_length,
+        flash_attn3=args.attention_backend == "flash-attn3",
     )
   with set_default_dtype(model_dtype):
     model = Transformer(model_config).to(device)
@@ -88,76 +90,93 @@ def train(args):
   ntraining_tokens_since_last_log = 0
   time_last_log = time.perf_counter()
 
-  logger.info("Starting training!")
-  train_step = 0
-  while train_step < args.training_steps:
-    train_step += 1
+  if args.attention_backend == "cudnn":
+    backend = SDPBackend.CUDNN_ATTENTION
+  elif args.attention_backend == "efficient":
+    backend = SDPBackend.EFFICIENT_ATTENTION
+  elif args.attention_backend == "flash-attn":
+    backend = SDPBackend.FLASH_ATTENTION
+  else:
+    backend = None
 
-    # Profiling
-    if args.profile and args.profile_step_start == train_step:
-      torch.cuda.cudart().cudaProfilerStart()
-      torch.autograd.profiler.emit_nvtx(record_shapes=True).__enter__()
+  def training_loop():
+    logger.info("Starting training!")
+    train_step = 0
+    while train_step < args.training_steps:
+      train_step += 1
 
-    input_ids, labels = next(train_dl_iterator)
-    ntokens_since_last_log += args.batch_size * args.sequence_length
-    num_items_in_batch = labels.ne(-100).sum()
-    ntraining_tokens_since_last_log += num_items_in_batch
-    input_ids = input_ids.to(device)
-    labels = labels.to(device)
+      # Profiling
+      if args.profile and args.profile_step_start == train_step:
+        torch.cuda.cudart().cudaProfilerStart()
+        torch.autograd.profiler.emit_nvtx(record_shapes=True).__enter__()
 
-    optimizer.zero_grad()
+      input_ids, labels = next(train_dl_iterator)
+      ntokens_since_last_log += args.batch_size * args.sequence_length
+      num_items_in_batch = labels.ne(-100).sum()
+      ntraining_tokens_since_last_log += num_items_in_batch
+      input_ids = input_ids.to(device)
+      labels = labels.to(device)
 
-    logits = model(input_ids)
-    loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1).float(), labels.flatten(0, 1), reduction="sum")
-    loss = loss / num_items_in_batch
-    del logits
-    loss.backward()
+      optimizer.zero_grad()
 
-    # Clip gradients
-    clip_grad_norm_(model.parameters(), args.grad_max_norm)
+      logits = model(input_ids)
+      loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1).float(), labels.flatten(0, 1), reduction="sum")
+      loss = loss / num_items_in_batch
+      del logits
+      loss.backward()
 
-    optimizer.step()
-    lr_scheduler.step()
+      # Clip gradients
+      clip_grad_norm_(model.parameters(), args.grad_max_norm)
 
-    # Logging
-    if (train_step == 1 or train_step % args.logging_frequency == 0):
-      time_delta = time.perf_counter() - time_last_log
-      # tokens per second per device, abbreviated as tps
-      tps = float(ntokens_since_last_log / time_delta)
-      mfu = float(100 * num_flop_per_token * tps / 989e12)
-      tflops = float(num_flop_per_token * tps / 1e12)
-      training_tps = float(ntraining_tokens_since_last_log / time_delta)
-      current_lr = float(lr_scheduler.get_last_lr()[0])
+      optimizer.step()
+      lr_scheduler.step()
 
-      # Log to console
-      logger.info(f"Step: {train_step} | Loss: {loss.item():.2f} | Tokens per second: {tps:.2f} | Training tokens per second (%): {100*training_tps/tps:.2f} | MFU (%): {mfu:.2f} | TFLOPs: {tflops:.2f}")
+      # Logging
+      if (train_step == 1 or train_step % args.logging_frequency == 0):
+        time_delta = time.perf_counter() - time_last_log
+        # tokens per second per device, abbreviated as tps
+        tps = float(ntokens_since_last_log / time_delta)
+        mfu = float(100 * num_flop_per_token * tps / 989e12)
+        tflops = float(num_flop_per_token * tps / 1e12)
+        training_tps = float(ntraining_tokens_since_last_log / time_delta)
+        current_lr = float(lr_scheduler.get_last_lr()[0])
+
+        # Log to console
+        logger.info(f"Step: {train_step} | Loss: {loss.item():.2f} | Tokens per second: {tps:.2f} | Training tokens per second (%): {100*training_tps/tps:.2f} | MFU (%): {mfu:.2f} | TFLOPs: {tflops:.2f}")
+        
+        # Collect metrics in memory - ensure all values are native Python types
+        metrics_data.append({
+          'step': int(train_step),
+          'loss': float(loss.item()),
+          'tokens_per_second': float(tps),
+          'training_tokens_per_second': float(training_tps),
+          'training_tokens_percentage': float(100 * training_tps / tps),
+          'mfu': float(mfu),
+          'tflops': float(tflops),
+          'learning_rate': float(current_lr)
+        })
+
+        ntokens_since_last_log = 0
+        ntraining_tokens_since_last_log = 0
+        time_last_log = time.perf_counter()
       
-      # Collect metrics in memory - ensure all values are native Python types
-      metrics_data.append({
-        'step': int(train_step),
-        'loss': float(loss.item()),
-        'tokens_per_second': float(tps),
-        'training_tokens_per_second': float(training_tps),
-        'training_tokens_percentage': float(100 * training_tps / tps),
-        'mfu': float(mfu),
-        'tflops': float(tflops),
-        'learning_rate': float(current_lr)
-      })
+      # Profiling
+      if args.profile and args.profile_step_end == train_step:
+        torch.cuda.cudart().cudaProfilerStop()
 
-      ntokens_since_last_log = 0
-      ntraining_tokens_since_last_log = 0
-      time_last_log = time.perf_counter()
-    
-    # Profiling
-    if args.profile and args.profile_step_end == train_step:
-      torch.cuda.cudart().cudaProfilerStop()
+    # Write all metrics to file at the end of training
+    with open(metrics_file, 'w') as f:
+      for metrics in metrics_data:
+        f.write(json.dumps(metrics) + '\n')
 
-  # Write all metrics to file at the end of training
-  with open(metrics_file, 'w') as f:
-    for metrics in metrics_data:
-      f.write(json.dumps(metrics) + '\n')
+    logger.info(f"Training completed. Metrics saved to {metrics_file}")
 
-  logger.info(f"Training completed. Metrics saved to {metrics_file}")
+
+  if backend is not None:
+    with sdpa_kernel(backends=[backend]):
+      training_loop()
+  else:
+    training_loop()
 
 if __name__ == "__main__":
   init_logger()
