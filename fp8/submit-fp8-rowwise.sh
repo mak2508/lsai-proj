@@ -14,7 +14,7 @@
 #SBATCH --partition debug
 
 # Record start time
-start_time=$(date +%s)
+start_time=$(date)
 echo "START TIME: $start_time --sl 4096"
 
 # Set up ENV
@@ -38,9 +38,11 @@ TRAINING_CMD="python $PROJECT_DIR/train.py \
 srun --cpus-per-task $SLURM_CPUS_PER_TASK bash -c "$CMD_PREFIX $TRAINING_CMD"
 
 # Record end time
-end_time=$(date +%s)
+end_time=$(date)
 echo "END TIME: $end_time"
 
 # Calculate and print duration
-duration=$((end_time - start_time))
-echo "Duration: $duration seconds"
+duration=$(( $(date +%s) - $(date -d "$start_time" +%s) ))
+minutes=$((duration / 60))
+seconds=$((duration % 60))
+echo "Duration: ${minutes} minutes and ${seconds} seconds"

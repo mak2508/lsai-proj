@@ -13,7 +13,9 @@
 #SBATCH --no-requeue	# Prevent Slurm to requeue the job if the execution crashes (e.g. node failure) so we don't loose the logs
 #SBATCH --partition debug
 
-echo "START TIME: $(date) --sl 4096"
+# Record start time
+start_time=$(date)
+echo "START TIME: $start_time --sl 4096"
 
 # Set up ENV
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -33,4 +35,12 @@ TRAINING_CMD="python3 $PROJECT_DIR/train.py \
 
 srun --cpus-per-task $SLURM_CPUS_PER_TASK bash -c "$CMD_PREFIX $TRAINING_CMD"
 
-echo "END TIME: $(date)"
+# Record end time
+end_time=$(date)
+echo "END TIME: $end_time"
+
+# Calculate and print duration
+duration=$(( $(date +%s) - $(date -d "$start_time" +%s) ))
+minutes=$((duration / 60))
+seconds=$((duration % 60))
+echo "Duration: ${minutes} minutes and ${seconds} seconds"
