@@ -1,0 +1,2 @@
+{"step": 1, "loss": 12.043827056884766, "tokens_per_second": 4039.7524105690804, "training_tokens_per_second": 783.0965576171875, "training_tokens_percentage": 19.384766144786397, "mfu": 21.052953196164523, "tflops": 208.21370711006713, "learning_rate": 9.900990099009902e-07}
+{"step": 5, "loss": 11.94029426574707, "tokens_per_second": 8418.398209699835, "training_tokens_per_second": 960.8401489257812, "training_tokens_percentage": 11.413574470956759, "mfu": 43.87203112542215, "tflops": 433.894387830425, "learning_rate": 2.9702970297029703e-06}

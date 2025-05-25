@@ -2,8 +2,8 @@
 
 #SBATCH --account=a-large-sc
 #SBATCH --time=00:14:59
-#SBATCH --job-name=fa-tridao
-#SBATCH --output=/iopsstor/scratch/cscs/%u/project/logs/%x-%j.out
+#SBATCH --job-name=fp8-tensorwise
+#SBATCH --output=/iopsstor/scratch/cscs/%u/project/output/logs/%x-%j.out
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
@@ -19,7 +19,7 @@ echo "START TIME: $start_time --sl 4096"
 
 # Set up ENV
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-PROJECT_DIR="/iopsstor/scratch/cscs/$USER/project/flashattention"
+PROJECT_DIR="/iopsstor/scratch/cscs/$USER/project"
 
 CMD_PREFIX="numactl --membind=0-3"
 
@@ -30,6 +30,10 @@ TRAINING_CMD="python3 $PROJECT_DIR/train.py \
     --lr-warmup-steps 100 \
     --training-steps 1000 \
     --fused-optimizer \
+    --output-dir $PROJECT_DIR/output/data \
+    --job-name $SLURM_JOB_NAME \
+    --fp8-train \
+    --fp8-recipe tensorwise
     "
 
 srun --cpus-per-task $SLURM_CPUS_PER_TASK bash -c "$CMD_PREFIX $TRAINING_CMD"
