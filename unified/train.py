@@ -35,7 +35,7 @@ def train(args):
   # Set up metrics logging
   timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
   os.makedirs(args.output_dir, exist_ok=True)
-  metrics_file = os.path.join(args.output_dir, f"training_metrics_{timestamp}.jsonl")
+  metrics_file = os.path.join(args.output_dir, f"{args.job_name}_{timestamp}.jsonl")
   metrics_data = []
   
   # Set up DataLoader
@@ -86,10 +86,6 @@ def train(args):
       model_config,
   )
 
-  ntokens_since_last_log = 0
-  ntraining_tokens_since_last_log = 0
-  time_last_log = time.perf_counter()
-
   if args.attention_backend == "cudnn":
     backend = SDPBackend.CUDNN_ATTENTION
   elif args.attention_backend == "efficient":
@@ -100,6 +96,10 @@ def train(args):
     backend = None
 
   def training_loop():
+    ntokens_since_last_log = 0
+    ntraining_tokens_since_last_log = 0
+    time_last_log = time.perf_counter()
+
     logger.info("Starting training!")
     train_step = 0
     while train_step < args.training_steps:

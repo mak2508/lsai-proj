@@ -206,5 +206,11 @@ def get_args():
         default="none",
         help="Attention backend to use. Options: flash-attn, flash-attn3, cudnn, efficient, none.",
     )
+    parser.add_argument(
+        "--job-name",
+        type=str,
+        default="baseline",
+        help="Name of the job to save the metrics"
+    )
     args = parser.parse_args()
     return args
