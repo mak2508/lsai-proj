@@ -1,0 +1,18 @@
+# Configuration for training metrics plotting
+job_name: "flash_attn_comparison"  # Will create a subfolder with this name in the output directory
+
+# Mapping of input files to their display names
+files:
+  "output/data/baseline_20250525_101529.jsonl": "Baseline"
+  "output/data/flash-attn-cudnn_20250525_102524.jsonl": "CUDNN Attention"
+  "output/data/flash-attn-efficient_20250525_103446.jsonl": "Efficient Attention"
+  "output/data/flash-attn-fa_20250525_165259.jsonl": "Flash Attention 2"
+  "output/data/flash-attn-fa3_20250525_104526.jsonl": "Flash Attention 3"
+
+# Output configuration
+output:
+  base_dir: "output/figs"  # Base directory for all plots
+  # Optional: specific output paths for different plot types
+  training_curves: "training_curves.png"
+  performance_comparison: "performance_comparison.png"
+  time_analysis: "time_analysis.png" 

@@ -5,21 +5,19 @@ import seaborn as sns
 from pathlib import Path
 import argparse
 import glob
+import yaml
 
-def load_metrics(file_paths):
+def load_metrics(run_configs):
     """Load metrics from multiple jsonl files into a list of dataframes."""
     dfs = []
-    for pattern in file_paths:
+    for run_config in run_configs:
         # Expand wildcard pattern
-        matching_files = glob.glob(pattern)
+        matching_files = glob.glob(run_config['pattern'])
         if not matching_files:
-            print(f"Warning: No files found matching pattern: {pattern}")
+            print(f"Warning: No files found matching pattern: {run_config['pattern']}")
             continue
             
         for path in matching_files:
-            # Extract run name from filename (e.g., 'baseline_20250125_020643.jsonl' -> 'baseline')
-            run_name = Path(path).stem.split('_')[0]
-            
             # Read jsonl file
             data = []
             with open(path, 'r') as f:
@@ -28,12 +26,12 @@ def load_metrics(file_paths):
             
             # Convert to DataFrame
             df = pd.DataFrame(data)
-            df['run'] = run_name
+            df['run'] = run_config['name']  # Use the configured display name
             dfs.append(df)
     
     return dfs
 
-def plot_training_curves(dfs, output_dir):
+def plot_training_curves(dfs, output_path):
     """Plot training metrics over time."""
     # Combine all dataframes
     combined_df = pd.concat(dfs, ignore_index=True)
@@ -83,10 +81,10 @@ def plot_training_curves(dfs, output_dir):
     axes[1,1].grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/training_curves.png')
+    plt.savefig(output_path)
     plt.close()
 
-def plot_performance_comparison(dfs, output_dir):
+def plot_performance_comparison(dfs, output_path):
     """Create box plots comparing performance metrics across runs."""
     combined_df = pd.concat(dfs, ignore_index=True)
     
@@ -131,10 +129,10 @@ def plot_performance_comparison(dfs, output_dir):
     axes[1,1].tick_params(axis='x', rotation=45)
     
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/performance_comparison.png')
+    plt.savefig(output_path)
     plt.close()
 
-def plot_time_analysis(dfs, output_dir):
+def plot_time_analysis(dfs, output_path):
     """Analyze and plot timing information."""
     combined_df = pd.concat(dfs, ignore_index=True)
     
@@ -159,27 +157,35 @@ def plot_time_analysis(dfs, output_dir):
     axes[1].grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/time_analysis.png')
+    plt.savefig(output_path)
     plt.close()
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate training plots from jsonl files')
-    parser.add_argument('--input_files', nargs='+', required=True, help='List of jsonl files to plot')
-    parser.add_argument('--output_dir', required=True, help='Directory to save plots')
+    parser = argparse.ArgumentParser(description='Generate training plots from jsonl files using a config file')
+    parser.add_argument('--config', required=True, help='Path to the YAML configuration file')
     args = parser.parse_args()
     
-    # Create output directory if it doesn't exist
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    # Load configuration
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Create output directory structure
+    output_dir = Path(config['output']['base_dir']) / config['job_name']
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Load data
-    dfs = load_metrics(args.input_files)
+    dfs = load_metrics(config['runs'])
+    
+    if not dfs:
+        print("Error: No data loaded from any of the specified patterns")
+        return
     
     # Generate plots
-    plot_training_curves(dfs, args.output_dir)
-    plot_performance_comparison(dfs, args.output_dir)
-    plot_time_analysis(dfs, args.output_dir)
+    plot_training_curves(dfs, output_dir / config['output']['training_curves'])
+    plot_performance_comparison(dfs, output_dir / config['output']['performance_comparison'])
+    plot_time_analysis(dfs, output_dir / config['output']['time_analysis'])
     
-    print(f"Plots have been saved to {args.output_dir}")
+    print(f"Plots have been saved to {output_dir}")
 
 if __name__ == "__main__":
     main()
