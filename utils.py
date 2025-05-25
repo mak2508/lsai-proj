@@ -17,13 +17,25 @@ PRECISION_STR_TO_DTYPE = {
 }
 
 def init_logger():
+    # Get the root logger
+    logger = logging.getLogger()
+    
+    # Remove any existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Set the log level
     logger.setLevel(logging.INFO)
+    
+    # Create and configure the handler
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     ch.setFormatter(formatter)
+    
+    # Add the handler
     logger.addHandler(ch)
 
 def get_num_params(model: torch.nn.Module, exclude_embedding: bool = False) -> int:
