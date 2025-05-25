@@ -1,0 +1,22 @@
+/bin/bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+START TIME: Sun May 25 02:29:25 CEST 2025 --sl 4096
+slurmstepd: error: couldn't chdir to `/workspace': No such file or directory: going to /tmp instead
+slurmstepd: error: couldn't chdir to `/workspace': No such file or directory: going to /tmp instead
+/usr/bin/bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+/users/ahkhan/.bashrc: line 33: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+INFO:root:Experiment args: Namespace(dataset='/capstor/store/cscs/ethz/large-sc/datasets/train_data.parquet', tokenizer_name_or_path='unsloth/Mistral-Nemo-Base-2407-bnb-4bit', sequence_length=4096, batch_size=1, fused_optimizer=True, learning_rate=5e-05, lr_warmup_steps=100, training_steps=5, logging_frequency=5, profile=False, profile_step_start=10, profile_step_end=12, grad_max_norm=1, model_dtype='bf16', compile=False, output_dir='/iopsstor/scratch/cscs/ahkhan/project/output/data', fp8_train=False, fp8_recipe='tensorwise', attention_backend='none', job_name='baseline')
+2025-05-25 02:29:43,880 - root - INFO - Experiment args: Namespace(dataset='/capstor/store/cscs/ethz/large-sc/datasets/train_data.parquet', tokenizer_name_or_path='unsloth/Mistral-Nemo-Base-2407-bnb-4bit', sequence_length=4096, batch_size=1, fused_optimizer=True, learning_rate=5e-05, lr_warmup_steps=100, training_steps=5, logging_frequency=5, profile=False, profile_step_start=10, profile_step_end=12, grad_max_norm=1, model_dtype='bf16', compile=False, output_dir='/iopsstor/scratch/cscs/ahkhan/project/output/data', fp8_train=False, fp8_recipe='tensorwise', attention_backend='none', job_name='baseline')
+INFO:root:Setting up DataLoaders...
+2025-05-25 02:29:43,881 - root - INFO - Setting up DataLoaders...
+INFO:root:Setting up Model...
+2025-05-25 02:29:47,078 - root - INFO - Setting up Model...
+INFO:root:Starting training!
+2025-05-25 02:30:23,099 - root - INFO - Starting training!
+INFO:root:Step: 1 | Loss: 11.96 | Tokens per second: 3608.38 | Training tokens per second (%): 19.38 | MFU (%): 18.80 | TFLOPs: 185.98
+2025-05-25 02:30:24,286 - root - INFO - Step: 1 | Loss: 11.96 | Tokens per second: 3608.38 | Training tokens per second (%): 19.38 | MFU (%): 18.80 | TFLOPs: 185.98
+INFO:root:Step: 5 | Loss: 11.97 | Tokens per second: 8408.90 | Training tokens per second (%): 11.41 | MFU (%): 43.82 | TFLOPs: 433.40
+2025-05-25 02:30:26,289 - root - INFO - Step: 5 | Loss: 11.97 | Tokens per second: 8408.90 | Training tokens per second (%): 11.41 | MFU (%): 43.82 | TFLOPs: 433.40
+INFO:root:Training completed. Metrics saved to /iopsstor/scratch/cscs/ahkhan/project/output/data/baseline_20250525_022943.jsonl
+2025-05-25 02:30:26,291 - root - INFO - Training completed. Metrics saved to /iopsstor/scratch/cscs/ahkhan/project/output/data/baseline_20250525_022943.jsonl
+END TIME: Sun May 25 02:30:28 CEST 2025
+Duration: 1 minutes and 3 seconds

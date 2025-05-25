@@ -1,0 +1,27 @@
+/bin/bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+START TIME: Sun May 25 02:05:46 CEST 2025 --sl 4096
+slurmstepd: error: couldn't chdir to `/workspace': No such file or directory: going to /tmp instead
+slurmstepd: error: couldn't chdir to `/workspace': No such file or directory: going to /tmp instead
+/usr/bin/bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+/users/ahkhan/.bashrc: line 33: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+INFO:root:Experiment args: Namespace(dataset='/capstor/store/cscs/ethz/large-sc/datasets/train_data.parquet', tokenizer_name_or_path='unsloth/Mistral-Nemo-Base-2407-bnb-4bit', sequence_length=4096, batch_size=1, fused_optimizer=True, learning_rate=5e-05, lr_warmup_steps=100, training_steps=1000, logging_frequency=5, profile=False, profile_step_start=10, profile_step_end=12, grad_max_norm=1, model_dtype='bf16', compile=False, output_dir='/iopsstor/scratch/cscs/ahkhan/project/unified/outputs/data', fp8_train=False, fp8_recipe='tensorwise', attention_backend='none', job_name='baseline')
+2025-05-25 02:06:04,617 - root - INFO - Experiment args: Namespace(dataset='/capstor/store/cscs/ethz/large-sc/datasets/train_data.parquet', tokenizer_name_or_path='unsloth/Mistral-Nemo-Base-2407-bnb-4bit', sequence_length=4096, batch_size=1, fused_optimizer=True, learning_rate=5e-05, lr_warmup_steps=100, training_steps=1000, logging_frequency=5, profile=False, profile_step_start=10, profile_step_end=12, grad_max_norm=1, model_dtype='bf16', compile=False, output_dir='/iopsstor/scratch/cscs/ahkhan/project/unified/outputs/data', fp8_train=False, fp8_recipe='tensorwise', attention_backend='none', job_name='baseline')
+INFO:root:Setting up DataLoaders...
+2025-05-25 02:06:04,618 - root - INFO - Setting up DataLoaders...
+INFO:root:Setting up Model...
+2025-05-25 02:06:07,913 - root - INFO - Setting up Model...
+INFO:root:Starting training!
+2025-05-25 02:06:43,895 - root - INFO - Starting training!
+Traceback (most recent call last):
+  File "/iopsstor/scratch/cscs/ahkhan/project/unified/train.py", line 184, in <module>
+    train(args)
+  File "/iopsstor/scratch/cscs/ahkhan/project/unified/train.py", line 179, in train
+    training_loop()
+  File "/iopsstor/scratch/cscs/ahkhan/project/unified/train.py", line 114, in training_loop
+    ntokens_since_last_log += args.batch_size * args.sequence_length
+    ^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'ntokens_since_last_log' where it is not associated with a value
+srun: error: nid006442: task 0: Exited with exit code 1
+srun: Terminating StepId=465785.0
+END TIME: Sun May 25 02:06:45 CEST 2025
+Duration: 0 minutes and 59 seconds
