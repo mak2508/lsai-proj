@@ -1,0 +1,15 @@
+# Configuration for training metrics plotting
+job_name: "fp8_comparison"  # Will create a subfolder with this name in the output directory
+
+# Mapping of input files to their display names
+files:
+  "output/data/baseline_20250525_101529.jsonl": "Baseline"
+  "output/data/baseline-compile_20250525_173352.jsonl": "Baseline (Compiled)"
+  "output/data/fp8-rowwise-compile_20250525_174348.jsonl": "FP8 Rowwise (Compiled)"
+  "output/data/fp8-tensorwise-compile_20250525_175501.jsonl": "FP8 Tensorwise (Compiled)"
+
+# Output configuration
+output:
+  base_dir: "output/figs"  # Base directory for all plots
+  
+adjust_initial_time: true

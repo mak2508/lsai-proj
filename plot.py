@@ -115,47 +115,56 @@ def plot_performance_comparison(dfs, output_dir):
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     color_dict = dict(zip(avg_metrics['run'].unique(), colors))
     
+    def add_value_labels(ax, values, fmt='{:.2f}'):
+        """Add value labels on top of each bar."""
+        for i, v in enumerate(values):
+            ax.text(i, v, fmt.format(v), ha='center', va='bottom')
+    
     # 1. Average Tokens per Second
     plt.figure(figsize=(10, 6))
-    sns.barplot(data=avg_metrics, x='run', y='tokens_per_second', palette=color_dict)
+    ax = sns.barplot(data=avg_metrics, x='run', y='tokens_per_second', palette=color_dict)
     plt.title('Average Training Speed')
     plt.ylabel('Tokens/Second')
     plt.xticks(rotation=45)
+    add_value_labels(ax, avg_metrics['tokens_per_second'], '{:.0f}')
     plt.tight_layout()
     plt.savefig(perf_dir / 'avg_tokens_per_second.png')
     plt.close()
     
     # 2. Average MFU
     plt.figure(figsize=(10, 6))
-    sns.barplot(data=avg_metrics, x='run', y='mfu', palette=color_dict)
+    ax = sns.barplot(data=avg_metrics, x='run', y='mfu', palette=color_dict)
     plt.title('Average Model FLOPs Utilization')
     plt.ylabel('MFU (%)')
     plt.xticks(rotation=45)
+    add_value_labels(ax, avg_metrics['mfu'], '{:.1f}%')
     plt.tight_layout()
     plt.savefig(perf_dir / 'avg_mfu.png')
     plt.close()
     
     # 3. Average TFLOPs
     plt.figure(figsize=(10, 6))
-    sns.barplot(data=avg_metrics, x='run', y='tflops', palette=color_dict)
+    ax = sns.barplot(data=avg_metrics, x='run', y='tflops', palette=color_dict)
     plt.title('Average TFLOPs')
     plt.ylabel('TFLOPs')
     plt.xticks(rotation=45)
+    add_value_labels(ax, avg_metrics['tflops'], '{:.2f}')
     plt.tight_layout()
     plt.savefig(perf_dir / 'avg_tflops.png')
     plt.close()
     
     # 4. Average Training Tokens Percentage
     plt.figure(figsize=(10, 6))
-    sns.barplot(data=avg_metrics, x='run', y='training_tokens_percentage', palette=color_dict)
+    ax = sns.barplot(data=avg_metrics, x='run', y='training_tokens_percentage', palette=color_dict)
     plt.title('Average Training Tokens Percentage')
     plt.ylabel('Training Tokens (%)')
     plt.xticks(rotation=45)
+    add_value_labels(ax, avg_metrics['training_tokens_percentage'], '{:.1f}%')
     plt.tight_layout()
     plt.savefig(perf_dir / 'avg_training_tokens_percentage.png')
     plt.close()
 
-def plot_time_analysis(dfs, output_dir):
+def plot_time_analysis(dfs, output_dir, config):
     """Analyze and plot timing information as separate figures."""
     # Create subfolder for time analysis
     time_dir = output_dir / 'time_analysis'
@@ -177,6 +186,9 @@ def plot_time_analysis(dfs, output_dir):
     plt.figure(figsize=(10, 6))
     for df in dfs:
         df['cumulative_time'] = df['time_delta'].cumsum()
+        if config.get('adjust_initial_time', False):
+            initial_time = df['cumulative_time'].iloc[0]  # Get the first cumulative time value
+            df['cumulative_time'] = df['cumulative_time'] - initial_time  # Subtract initial time
         plt.plot(df['step'], df['cumulative_time'], label=df['run'].iloc[0])
     plt.title('Cumulative Training Time')
     plt.xlabel('Step')
@@ -210,7 +222,7 @@ def main():
     # Generate plots
     plot_training_curves(dfs, output_dir)
     plot_performance_comparison(dfs, output_dir)
-    plot_time_analysis(dfs, output_dir)
+    plot_time_analysis(dfs, output_dir, config)
     
     print(f"Plots have been saved to {output_dir}")
     print("Organized in subfolders:")
