@@ -4,7 +4,7 @@ This project investigates the performance improvements of two key optimizations 
 1. **Flash Attention**: An efficient implementation of attention that reduces memory usage and improves computational speed by avoiding redundant memory reads/writes.
 2. **FP8 Training**: Using 8-bit floating point precision for training, which can significantly reduce memory usage and potentially increase training speed while maintaining model quality.
 
-The project is a part of the [Large Scale AI Engineering course at ETH Zurich](https://ai.ethz.ch/education/lectures-and-seminars/large-scale-ai-engineering.html). These experiments were conducted on the CSCS Alps cluster (https://www.cscs.ch/computers/alps), which has the Grace Hopper Processors. The 2 selected features are optimized for the Grace Hopper Processors, and thus are valuable to study.
+The project is a part of the [Large Scale AI Engineering course at ETH Zurich](https://ai.ethz.ch/education/lectures-and-seminars/large-scale-ai-engineering.html). These experiments were conducted on the [CSCS Alps cluster](https://www.cscs.ch/computers/alps), which has the Grace Hopper Processors. The 2 selected features are optimized for the Grace Hopper Processors, and thus are valuable to study.
 
 ## Project Structure
 
