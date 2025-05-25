@@ -12,7 +12,4 @@ files:
 # Output configuration
 output:
   base_dir: "output/figs"  # Base directory for all plots
-  # Optional: specific output paths for different plot types
-  training_curves: "training_curves.png"
-  performance_comparison: "performance_comparison.png"
-  time_analysis: "time_analysis.png" 
+  
