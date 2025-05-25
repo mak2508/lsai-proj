@@ -2,7 +2,7 @@
 
 #SBATCH --account=a-large-sc
 #SBATCH --time=00:14:59
-#SBATCH --job-name=baseline
+#SBATCH --job-name=fp8-tensorwise-compile
 #SBATCH --output=/iopsstor/scratch/cscs/%u/project/output/logs/%x-%j.out
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -31,7 +31,10 @@ TRAINING_CMD="python3 $PROJECT_DIR/train.py \
     --training-steps 1000 \
     --fused-optimizer \
     --output-dir $PROJECT_DIR/output/data \
-    --job-name $SLURM_JOB_NAME
+    --job-name $SLURM_JOB_NAME \
+    --fp8-train \
+    --fp8-recipe tensorwise \
+    --compile
     "
 
 srun --cpus-per-task $SLURM_CPUS_PER_TASK bash -c "$CMD_PREFIX $TRAINING_CMD"

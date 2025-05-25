@@ -9,6 +9,9 @@ JOBS=(
     "jobs/flash-attn/submit-fa.sh"
     "jobs/fp8/submit-fp8-row.sh"
     "jobs/fp8/submit-fp8.sh"
+    "jobs/baseline/submit-baseline-compile.sh"
+    "jobs/fp8/submit-fp8-row-compile.sh"
+    "jobs/fp8/submit-fp8-compile.sh"
     # Add more job scripts as needed
 )
 
